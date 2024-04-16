@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "955452289172",
+    "project_id": "flutter-d43fe",
+    "storage_bucket": "flutter-d43fe.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:955452289172:android:99aa33945e58f002694481",
+        "android_client_info": {
+          "package_name": "com.example.flutter_film_catalog"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCefrm6Yq9SpY5uUD0tsDFxVCB11vr7jj0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
