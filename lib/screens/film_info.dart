@@ -60,6 +60,22 @@ class FilmInfo extends StatelessWidget {
     }
   }
 
+  Stream<List<Review>> _getReviewsStream() {
+    return FirebaseFirestore.instance.collection('reviews')
+        .where(FieldPath.documentId, whereIn: film.reviews)
+        .snapshots()
+        .map((querySnapshot) {
+      return querySnapshot.docs.map((doc) {
+        return Review(
+          uid: doc.id,
+          authorID: doc['authorID'],
+          text: doc['text'],
+          rating: doc['rating'],
+        );
+      }).toList();
+    });
+  }
+
   Future<List<Review>> _getReviews() async {
     // Получаем отзывы для списка uid из объекта Film
     QuerySnapshot<Map<String, dynamic>> querySnapshot =
@@ -188,13 +204,13 @@ class FilmInfo extends StatelessWidget {
             ],
           ),
           SizedBox(height: 10),
-          FutureBuilder(
-            future: _getReviews(),
-            builder: (context, AsyncSnapshot<List<Review>> snapshot) {
+          StreamBuilder<List<Review>>(
+            stream: _getReviewsStream(),
+            builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return _loading();
               } else if (snapshot.hasError) {
-                return Text('Рецензий на этот фильм пока нет');
+                return Text('Произошла ошибка при загрузке рецензий');
               } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                 List<Review> reviews = snapshot.data!;
                 return Column(
@@ -211,12 +227,13 @@ class FilmInfo extends StatelessWidget {
               }
             },
           ),
-          FutureBuilder(
-            future: _getReviews(),
-            builder: (context, AsyncSnapshot<List<Review>> snapshot) {
+          StreamBuilder<List<Review>>(
+            stream: _getReviewsStream(),
+            builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return _loading();
               } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                List<Review> reviews = snapshot.data!;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -227,15 +244,15 @@ class FilmInfo extends StatelessWidget {
                     SizedBox(height: 10),
                     ListView.builder(
                       shrinkWrap: true,
-                      itemCount: snapshot.data!.length,
+                      itemCount: reviews.length,
                       itemBuilder: (context, index) {
-                        Review review = snapshot.data![index];
+                        Review review = reviews[index];
                         return FutureBuilder(
                           future: FirebaseFirestore.instance
                               .collection('users')
                               .doc(review.authorID)
                               .get(),
-                          builder: (context, AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> userSnapshot) {
+                          builder: (context, userSnapshot) {
                             if (userSnapshot.connectionState == ConnectionState.waiting) {
                               return _loading();
                             } else if (userSnapshot.hasError) {
@@ -255,7 +272,7 @@ class FilmInfo extends StatelessWidget {
                                 ],
                               );
                             } else {
-                              return Text('Рецензий на этот фильм пока нет'); // Если данных о пользователе нет, ничего не отображаем
+                              return Text('Рецензий на этот фильм пока нет');
                             }
                           },
                         );
@@ -264,39 +281,38 @@ class FilmInfo extends StatelessWidget {
                   ],
                 );
               } else {
-                return SizedBox(); // Если нет отзывов, ничего не отображаем
+                return SizedBox();
               }
             },
           ),
-          FutureBuilder(
-            future: _getReviews(),
-            builder: (context, AsyncSnapshot<List<Review>> snapshot) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor),
-                      onPressed: () {
-                        Review? userReview;
-                        if (snapshot.hasData && snapshot.data!.any((review) => review.authorID == user!.uid)) {
-                            userReview = snapshot.data!.firstWhere((review) => review.authorID == user!.uid);
-                        } else {
-                            userReview = null;
-                        }
-
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => ReviewEditDialog(filmID: film.uid, userID: user!.uid, existingReview: userReview)));
-                      },
-                      child: Text('Моя рецензия', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
+          StreamBuilder<List<Review>>(
+            stream: _getReviewsStream(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return _loading();
+              } else {
+                List<Review> reviews = snapshot.data ?? [];
+                Review? userReview;
+                if (reviews.any((review) => review.authorID == user!.uid)) {
+                  userReview = reviews.firstWhere((review) => review.authorID == user!.uid);
+                } else {
+                  userReview = null;
+                }
+                return ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ReviewEditDialog(filmID: film.uid, userID: user!.uid, existingReview: userReview),
+                      ),
+                    );
+                  },
+                  child: Text('Моя рецензия', style: TextStyle(color: Colors.white)),
                 );
+              }
             },
           ),
-
         ],
       ),
     );
